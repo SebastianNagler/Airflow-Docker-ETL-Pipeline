@@ -1,0 +1,16 @@
+.env
+.aws/
+venv/
+
+.DS_Store
+
+logs/
+*.log
+
+*.xml
+*.parquet
+
+__pycache__/
+*.pyc
+
+config/
