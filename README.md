@@ -143,7 +143,7 @@ It may take a few minutes for all Airflow services (scheduler, webserver, worker
 
 If both the extraction and execution were successful, the Airflow UI Grid view will look similar to the one shown below. Two corresponding green checkmarks should appear below a green bar representing the task.
 
-![alt text](assets/Screenshot-Airflow-success.png)
+![alt text](assets/Screenshot-Airflow-Success.png)
 
 An AWS S3 directory structure that categorizes files based on formats (.xml, .parquet) and date (year, month, day) is automatically extended for every processed data file. This approach (partition pruning) enables AWS Athena to avoid reading all files when only one is relevant to a given query. The screenshots below taken from the AWS S3 console view provide two examples.
 
