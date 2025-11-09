@@ -51,7 +51,7 @@ If the transform step fails, it can be re-run independently without re-executing
    * `cp .env.example .env`
 
 3. Edit .env:  
-   * Run `id /u` in the terminal and replace the value of `AIRFLOW_UID` by the result.
+   * Run `id -u` in the terminal and replace the value of `AIRFLOW_UID` by the result.
    * If using macOs, run `stat -f '%g' /var/run/docker.sock` in the terminal; if using Linux, run `stat -c '%g' /var/run/docker.sock` in the terminal. Replace the value of `DOCKER_GID` by the result.
 
 ### **2\. Build the ETL Image**
