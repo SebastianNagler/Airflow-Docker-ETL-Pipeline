@@ -63,7 +63,7 @@ Build it locally by running `docker build \-t my-siri-etl:latest .`.
 ### **3\. Launch Airflow**
 
 Run the local Airflow cluster using Docker Compose:  
-`docker-compose up \-d`
+`docker-compose up -d`
 
 It may take a few minutes for all Airflow services (scheduler, webserver, worker) to initialize.
 
