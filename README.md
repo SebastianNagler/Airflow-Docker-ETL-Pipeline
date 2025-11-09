@@ -7,61 +7,7 @@ The entire process is orchestrated using Apache Airflow, with all tasks containe
 
 ## **Architecture Diagram**
 
-```mermaid
-graph TD
-   classDef default fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef cloud fill:#d4e6f1,stroke:#3498db,color:#000;
-    classDef storage fill:#fdebd0,stroke:#f39c12,color:#000;
-    classDef compute fill:#e8f8f5,stroke:#1abc9c,color:#000;
-    classDef orchestrator fill:#f4ecf7,stroke:#8e44ad,color:#000;
-
-    subgraph "External Source" [fa:fa-cloud]
-        direction TB
-        API[fa:fa-database OpenTransportData.swiss SIRI-PT API]
-        class API cloud;
-    end
-
-    subgraph id_local_env ["Local Docker Environment"]
-        direction TB
-        subgraph "Apache Airflow (Orchestrator)" [fa:fa-wind]
-            A[fa:fa-clock Airflow Scheduler]
-            class A orchestrator;
-        end
-
-        subgraph "Docker Host (Execution)" [fa:fa-docker]
-            D_E["fa:fa-docker extract_task (Container)"]
-            D_T["fa:fa-docker transform_task (Container)"]
-            class D_E,D_T compute;
-        end
-    end
-
-    subgraph "Data Lake (AWS S3)" [fa:fa-aws]
-        direction TB
-        S3_Raw["fa:fa-folder siri_pt_raw/ (Raw XML)"]
-        S3_Processed["fa:fa-file-excel siri_pt/ (Processed Parquet)"]
-        class S3_Raw,S3_Processed storage;
-    end
-
-    A -- 1. Triggers 'extract_raw_data' @daily --> D_E
-    D_E -- 2. GET Request (w/ API Key) --> API
-    D_E -- 3. Stream-Uploads XML --> S3_Raw
-    A -- 4. Triggers 'transform_to_parquet' (on success) --> D_T
-    D_T -- 5. Reads/Streams XML from --> S3_Raw
-    D_T -- 6. Writes Parquet Chunks to --> S3_Processed
-   ```
-
-## **Tech Stack**
-
-| Category | Technology | Purpose |
-| :---- | :---- | :---- |
-| **Orchestration** | Apache Airflow | Scheduling, monitoring, and executing the daily ETL pipeline. |
-| **Containerization** | Docker, Docker Compose | Creating reproducible environments for Airflow and the ETL tasks. |
-| **Data Lake** | AWS S3 | Storing raw XML data and processed, partitioned Parquet files. |
-| **Data Processing** | Python | Language for ETL logic. |
-|  | Pandas, PyArrow | Data structuring and high-performance, memory-efficient Parquet writing. |
-|  | xml.etree.ElementTree | Memory-efficient streaming parser (iterparse) for large XML files. |
-| **Data Access** | s3fs, boto3 | Interacting with AWS S3 for direct-to/from-cloud I/O. |
-|  | requests | Extracting raw data from the SIRI-PT HTTPS endpoint. |
+![alt text](assets/architecture_diagram.png)
 
 ## **Key Design Features**
 
