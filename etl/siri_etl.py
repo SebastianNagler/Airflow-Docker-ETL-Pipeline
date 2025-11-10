@@ -7,8 +7,6 @@ import os
 import boto3
 import botocore.exceptions
 from datetime import datetime
-import sys
-import io
 import pyarrow as pa
 import pyarrow.parquet as pq
 import s3fs
@@ -112,12 +110,29 @@ def transform_siri_pt_data(s3_bucket: str, s3_raw_key: str, s3_processed_key: st
 
     CHUNK_SIZE = 50000 
     all_stops_data: List[Dict[str, Any]] = []
+    siri_schema = pa.schema([
+        pa.field('journey_ref', pa.string()),
+        pa.field('line_name', pa.string()),
+        pa.field('vehicle_mode', pa.string()),
+        pa.field('stop_point_ref', pa.string()),
+        pa.field('visit_number', pa.int64()),
+        pa.field('stop_name', pa.string()),
+        pa.field('aimed_arrival_time', pa.timestamp('ns', tz='UTC')),
+        pa.field('aimed_departure_time', pa.timestamp('ns', tz='UTC')),
+        pa.field('platform', pa.string())
+    ])
     
     parquet_writer: Optional[pq.ParquetWriter] = None
     schema_defined = False
     total_records = 0
 
     try:
+        parquet_writer = pq.ParquetWriter(
+            s3_processed_path, 
+            siri_schema, 
+            compression='gzip',
+            filesystem=s3
+        )
         # 'rb' stands for 'read binary' and is used because the iterparse function is designed to consume a raw byte stream
         with s3.open(s3_raw_path, 'rb') as f_in:
             # Uses iterparse for incremental, low-memory XML parsing
@@ -169,18 +184,16 @@ def transform_siri_pt_data(s3_bucket: str, s3_raw_key: str, s3_processed_key: st
                         df_chunk['aimed_arrival_time'] = pd.to_datetime(df_chunk['aimed_arrival_time'], errors='coerce')
                         df_chunk['aimed_departure_time'] = pd.to_datetime(df_chunk['aimed_departure_time'], errors='coerce')
                         df_chunk['visit_number'] = df_chunk['visit_number'].astype('Int64')
+
+                        df_chunk['journey_ref'] = df_chunk['journey_ref'].astype(pd.StringDtype())
+                        df_chunk['line_name'] = df_chunk['line_name'].astype(pd.StringDtype())
+                        df_chunk['vehicle_mode'] = df_chunk['vehicle_mode'].astype(pd.StringDtype())
+                        df_chunk['stop_point_ref'] = df_chunk['stop_point_ref'].astype(pd.StringDtype())
+                        df_chunk['stop_name'] = df_chunk['stop_name'].astype(pd.StringDtype())
+                        df_chunk['platform'] = df_chunk['platform'].astype(pd.StringDtype())
                         
-                        table = pa.Table.from_pandas(df_chunk, preserve_index=False)
-                        
-                        if not schema_defined:
-                            parquet_writer = pq.ParquetWriter(
-                                s3_processed_path, 
-                                table.schema, 
-                                compression='gzip', # Each column in the .parquet file on S3 is stored as a collection of column segment compressions 
-                                filesystem=s3
-                            )
-                            schema_defined = True
-                        
+                        table = pa.Table.from_pandas(df_chunk, schema=siri_schema, preserve_index=False)
+                                          
                         parquet_writer.write_table(table)
                         all_stops_data = []
                     
@@ -195,22 +208,17 @@ def transform_siri_pt_data(s3_bucket: str, s3_raw_key: str, s3_processed_key: st
             df_chunk['aimed_arrival_time'] = pd.to_datetime(df_chunk['aimed_arrival_time'], errors='coerce')
             df_chunk['aimed_departure_time'] = pd.to_datetime(df_chunk['aimed_departure_time'], errors='coerce')
             df_chunk['visit_number'] = df_chunk['visit_number'].astype('Int64')
+
+            df_chunk['journey_ref'] = df_chunk['journey_ref'].astype(pd.StringDtype())
+            df_chunk['line_name'] = df_chunk['line_name'].astype(pd.StringDtype())
+            df_chunk['vehicle_mode'] = df_chunk['vehicle_mode'].astype(pd.StringDtype())
+            df_chunk['stop_point_ref'] = df_chunk['stop_point_ref'].astype(pd.StringDtype())
+            df_chunk['stop_name'] = df_chunk['stop_name'].astype(pd.StringDtype())
+            df_chunk['platform'] = df_chunk['platform'].astype(pd.StringDtype())
             
-            table = pa.Table.from_pandas(df_chunk, preserve_index=False)
-            
-            if not schema_defined:
-                logging.warning("No data processed in main loop (less than {CHUNK_SIZE} records); writing schema for final chunk.")
-                parquet_writer = pq.ParquetWriter(
-                    s3_processed_path, 
-                    table.schema, 
-                    compression='gzip', 
-                    filesystem=s3
-                )
+            table = pa.Table.from_pandas(df_chunk, schema=siri_schema, preserve_index=False)
             
             parquet_writer.write_table(table)
-
-        if parquet_writer:
-            parquet_writer.close()
             
         if total_records == 0:
             logging.warning("Transformation complete, but 0 records were processed.")
@@ -221,6 +229,8 @@ def transform_siri_pt_data(s3_bucket: str, s3_raw_key: str, s3_processed_key: st
 
     except (ET.ParseError, IOError, Exception) as e:
         logging.error(f"An error occurred during S3-to-S3 transformation: {e}", exc_info=True)
+        if parquet_writer:
+            parquet_writer.close()
         return False
     finally:
         if parquet_writer:
