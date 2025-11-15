@@ -10,6 +10,7 @@ from datetime import datetime
 import pyarrow as pa
 import pyarrow.parquet as pq
 import s3fs
+import sys
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
